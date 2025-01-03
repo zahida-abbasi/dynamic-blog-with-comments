@@ -1,15 +1,49 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function CommentSection() {
+  const [comments, setComments] = useState([]);
   const [comment, setComment] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  // Fetch comments from API
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/comments`);
+        const data = await response.json();
+        setComments(data.comments || []);
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+      }
+    };
+
+    fetchComments();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Backend me bhejne ka logic yahan add karen (optional)
-    setSuccessMessage('Comment added successfully!');
-    setComment('');
-    setTimeout(() => setSuccessMessage(''), 3000); // Success message ko 3 seconds ke baad hata dein
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ comment }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSuccessMessage(data.message);
+        setComment('');
+        setComments((prev) => [...prev, { text: comment }]); 
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        console.error('Error adding comment:', data.message);
+      }
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    }
   };
 
   return (
@@ -24,11 +58,12 @@ export default function CommentSection() {
         ></textarea>
         <button type="submit">Submit</button>
       </form>
-      {successMessage && (
-        <div className="success-popup">
-          {successMessage}
-        </div>
-      )}
+      {successMessage && <div className="success-popup">{successMessage}</div>}
+      <ul>
+        {comments.map((c, index) => (
+          <li key={index}>{c.text}</li>
+        ))}
+      </ul>
       <style jsx>{`
         .comment-section {
           max-width: 400px;
@@ -58,6 +93,14 @@ export default function CommentSection() {
           color: #155724;
           border: 1px solid #c3e6cb;
           border-radius: 5px;
+        }
+        ul {
+          list-style-type: none;
+          padding: 0;
+        }
+        li {
+          padding: 5px 0;
+          border-bottom: 1px solid #ccc;
         }
       `}</style>
     </div>
